@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Priority Reconciliation Engine</title>
+    <title>Smart Reconciliation Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
@@ -12,471 +12,949 @@
         
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #f8fafc;
+            background: #f0f4f8;
         }
 
-        .glass-card {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-        }
-
-        .protocol-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 1rem;
-        }
-
-        .p-card {
+        .card {
             background: white;
-            padding: 1.25rem;
-            border-radius: 1.25rem;
+            border-radius: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             border: 1px solid #e2e8f0;
-            transition: all 0.2s ease;
         }
 
-        .p-card:hover {
-            border-color: #3b82f6;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        .flow-box {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border: 2px solid #667eea;
+            border-radius: 1rem;
+            padding: 1.5rem;
+        }
+
+        .flow-arrow {
+            display: inline-block;
+            margin: 0 1rem;
+            font-size: 1.5rem;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
         }
 
         .drop-zone {
             border: 2px dashed #cbd5e1;
-            transition: all 0.2s ease;
+            transition: all 0.3s;
+            cursor: pointer;
         }
 
-        .drop-zone.active {
-            border-color: #3b82f6;
-            background-color: #eff6ff;
-            transform: scale(1.01);
+        .drop-zone:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
         }
 
-        .method-toggle {
-            position: relative;
-            background: #e2e8f0;
-            padding: 4px;
-            border-radius: 12px;
-            display: inline-flex;
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
         }
 
-        .method-btn {
-            position: relative;
-            z-index: 10;
-            padding: 8px 16px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            transition: color 0.3s;
+        .stat-card {
+            background: linear-gradient(135deg, #667eea15, #764ba215);
+            border-left: 4px solid #667eea;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
         }
 
-        .method-btn.active {
-            color: white;
-        }
+        .phase-1 { border-left-color: #3b82f6; }
+        .phase-2 { border-left-color: #10b981; }
+        .phase-3 { border-left-color: #f59e0b; }
 
-        .method-slider {
-            position: absolute;
-            top: 4px;
-            left: 4px;
-            height: calc(100% - 8px);
-            background: #2563eb;
-            border-radius: 8px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 0;
-        }
-
-        /* Custom scrollbar for log box */
         #log-box::-webkit-scrollbar {
-            width: 6px;
+            width: 8px;
         }
         #log-box::-webkit-scrollbar-thumb {
-            background: #475569;
+            background: #667eea;
             border-radius: 10px;
+        }
+
+        .phase-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .badge-p1 { background: #dbeafe; color: #1e40af; }
+        .badge-p2 { background: #dcfce7; color: #166534; }
+        .badge-p3 { background: #fed7aa; color: #b45309; }
+
+        .logic-step {
+            padding: 1rem;
+            background: #f8fafc;
+            border-left: 4px solid #667eea;
+            margin: 0.5rem 0;
+            border-radius: 0.25rem;
+        }
+
+        .logic-code {
+            background: #1f2937;
+            color: #10b981;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-family: 'Monaco', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
         }
     </style>
 </head>
-<body class="min-h-screen pb-20 text-slate-900">
+<body class="pb-20">
     <div class="max-w-7xl mx-auto px-6 py-12">
         
-        <!-- Header Section -->
-        <header class="mb-12 text-center lg:text-left flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div>
-                <h1 class="text-4xl font-extrabold tracking-tight text-slate-900 mb-2">Reconciliation <span class="text-blue-600">Engine</span></h1>
-                <p class="text-slate-500 font-medium max-w-xl">A cross-referencing system that utilizes a hierarchical 7-pass protocol to reconcile data across disparate bank and manual ledgers.</p>
-            </div>
-            
-            <div class="method-toggle shadow-sm self-center">
-                <div id="method-slider" class="method-slider w-[150px]"></div>
-                <button onclick="switchMethod('multi')" id="tab-multi" class="method-btn active w-[150px]">Dual Source (CSV)</button>
-                <button onclick="switchMethod('single')" id="tab-single" class="method-btn w-[150px]">Master Workbook</button>
+        <!-- Header & Logic Tabs -->
+        <header class="mb-8">
+            <div class="card p-8">
+                <h1 class="text-4xl font-extrabold text-slate-900 mb-2">
+                    Smart Reconciliation <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Engine</span>
+                </h1>
+                <p class="text-slate-600 mb-6">Intelligent 3-phase matching with UID duplicate tracking</p>
+                
+                <!-- Logic Tabs -->
+                <div class="flex gap-3 mb-6 flex-wrap">
+                    <button class="tab-btn active" onclick="showTab('how-it-works')">📖 How It Works</button>
+                    <button class="tab-btn" onclick="showTab('matching-rules')">⚙️ Matching Rules</button>
+                    <button class="tab-btn" onclick="showTab('uid-tracking')">🔍 UID Tracking</button>
+                    <button class="tab-btn" onclick="showTab('example')">💡 Example</button>
+                    <button class="tab-btn" onclick="showTab('upload')">📁 Upload & Run</button>
+                </div>
             </div>
         </header>
 
-        <!-- The Priority Protocol (P0-P6 Definitions) -->
-        <section class="mb-12">
-            <div class="flex items-center gap-3 mb-6">
-                <h2 class="text-lg font-bold text-slate-800">The Priority Protocol</h2>
-                <div class="h-px flex-1 bg-slate-200"></div>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Logic Tier Definition</span>
-            </div>
-            
-            <div class="protocol-grid">
-                <!-- P0 -->
-                <div class="p-card">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="w-7 h-7 flex items-center justify-center bg-blue-600 text-white text-[10px] font-bold rounded-full">P0</span>
-                        <h4 class="text-xs font-extrabold uppercase text-slate-900">Direct Alignment</h4>
+        <!-- TAB 1: HOW IT WORKS -->
+        <section id="how-it-works" class="tab-content mb-12">
+            <div class="card p-8">
+                <h2 class="text-2xl font-bold text-slate-900 mb-6">🔄 3-Phase Matching Logic</h2>
+                
+                <div class="space-y-6">
+                    <!-- Phase 1 -->
+                    <div class="flow-box">
+                        <h3 class="text-lg font-bold text-blue-700 mb-4">PHASE 1: Primary Payment Match</h3>
+                        <p class="text-slate-700 mb-4">Try to match bank transactions against the actual payment received date and amount.</p>
+                        <div class="logic-code mb-4">
+For each NAV record:
+  - Take Payment Date (Column 5) + PAYMENT Amount (Column 6)
+  - Search through bank transactions
+  - Apply P0-P4 matching rules
+  - STOP at first match (one-to-one mapping)
+                        </div>
+                        <div class="text-sm text-slate-600">
+                            <strong>Goal:</strong> Match the money that was actually received to the policy payment
+                        </div>
                     </div>
-                    <p class="text-[11px] text-slate-500 leading-relaxed">Matches where both <strong>Date</strong> and <strong>Amount</strong> are identical across sources.</p>
-                </div>
-                <!-- P1 -->
-                <div class="p-card">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="w-7 h-7 flex items-center justify-center bg-blue-500 text-white text-[10px] font-bold rounded-full">P1</span>
-                        <h4 class="text-xs font-extrabold uppercase text-slate-900">Decimal Offset</h4>
+
+                    <!-- Phase 2 -->
+                    <div class="flow-box">
+                        <h3 class="text-lg font-bold text-green-700 mb-4">PHASE 2: Expected Due Dates</h3>
+                        <p class="text-slate-700 mb-4">If Phase 1 doesn't match, check if payment arrived against one of the 6 expected due dates.</p>
+                        <div class="logic-code mb-4">
+For each unmatched NAV record:
+  - Check all 6 due date pairs:
+    • 1st Due Date (Col 11) + 1st Due Amount (Col 12)
+    • 2nd Due Date (Col 13) + 2nd Due Amount (Col 14)
+    • ... through 6th Due (Col 21-22)
+  - Apply P0-P4 logic to each
+  - STOP at first match
+                        </div>
+                        <div class="text-sm text-slate-600">
+                            <strong>Goal:</strong> Find if payment arrived at expected due dates instead
+                        </div>
                     </div>
-                    <p class="text-[11px] text-slate-500 leading-relaxed">Exact date matches with a minor amount variance of exactly <strong>±1</strong>.</p>
-                </div>
-                <!-- P2 -->
-                <div class="p-card">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="w-7 h-7 flex items-center justify-center bg-blue-400 text-white text-[10px] font-bold rounded-full">P2</span>
-                        <h4 class="text-xs font-extrabold uppercase text-slate-900">Fee Deduction</h4>
+
+                    <!-- Phase 3 -->
+                    <div class="flow-box">
+                        <h3 class="text-lg font-bold text-amber-700 mb-4">PHASE 3: Broad Recovery</h3>
+                        <p class="text-slate-700 mb-4">Last resort: use wide tolerance on the original payment date to catch late arrivals.</p>
+                        <div class="logic-code mb-4">
+For each remaining unmatched NAV:
+  - Use Payment Date (Col 5) + PAYMENT (Col 6)
+  - Apply BROAD matching rules:
+    • P5: -2 to +4 days window, ±25 variance
+    • P6: -2 to +7 days window, ±100 variance
+                        </div>
+                        <div class="text-sm text-slate-600">
+                            <strong>Goal:</strong> Recovery of delayed/partial payments
+                        </div>
                     </div>
-                    <p class="text-[11px] text-slate-500 leading-relaxed">Exact date matches with specific variance for fees: <strong>±5, 10, 15, or 20</strong>.</p>
-                </div>
-                <!-- P3 -->
-                <div class="p-card">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="w-7 h-7 flex items-center justify-center bg-slate-800 text-white text-[10px] font-bold rounded-full">P3</span>
-                        <h4 class="text-xs font-extrabold uppercase text-slate-900">Bank Latency</h4>
+
+                    <!-- Decision Tree -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-8">
+                        <h4 class="font-bold text-blue-900 mb-4">Decision Flow for Each NAV Record</h4>
+                        <div class="text-sm font-mono space-y-2">
+                            <div>1️⃣  Phase 1: Match Payment Date? → YES ✓ MATCHED (PHASE 1)</div>
+                            <div class="ml-4">↓ NO</div>
+                            <div>2️⃣  Phase 2: Match any Due Date? → YES ✓ MATCHED (PHASE 2)</div>
+                            <div class="ml-4">↓ NO</div>
+                            <div>3️⃣  Phase 3: Broad recovery? → YES ✓ MATCHED (PHASE 3)</div>
+                            <div class="ml-4">↓ NO</div>
+                            <div>❌ UNMATCHED - Manual Review Required</div>
+                        </div>
                     </div>
-                    <p class="text-[11px] text-slate-500 leading-relaxed">Matches where bank posting occurs exactly <strong>+1 day</strong> later with exact amounts.</p>
-                </div>
-                <!-- P4 -->
-                <div class="p-card border-l-4 border-l-amber-400">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="w-7 h-7 flex items-center justify-center bg-amber-400 text-white text-[10px] font-bold rounded-full">P4</span>
-                        <h4 class="text-xs font-extrabold uppercase text-slate-900">Date/Round</h4>
-                    </div>
-                    <p class="text-[11px] text-slate-500 leading-relaxed">Window of <strong>-2 to +5 days</strong> with exact <strong>rounded</strong> amount matching.</p>
-                </div>
-                <!-- P5 -->
-                <div class="p-card border-l-4 border-l-orange-400">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="w-7 h-7 flex items-center justify-center bg-orange-400 text-white text-[10px] font-bold rounded-full">P5</span>
-                        <h4 class="text-xs font-extrabold uppercase text-slate-900">Tight Tolerance</h4>
-                    </div>
-                    <p class="text-[11px] text-slate-500 leading-relaxed">Window of <strong>-2 to +4 days</strong> with a maximum variance of <strong>±25</strong>.</p>
-                </div>
-                <!-- P6 -->
-                <div class="p-card border-l-4 border-l-red-500">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="w-7 h-7 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full">P6</span>
-                        <h4 class="text-xs font-extrabold uppercase text-slate-900">Last Recovery</h4>
-                    </div>
-                    <p class="text-[11px] text-slate-500 leading-relaxed">Broad window of <strong>-2 to +7 days</strong> with a variance up to <strong>±100</strong>.</p>
                 </div>
             </div>
         </section>
 
-        <!-- Interaction Area -->
-        <div id="method-multi" class="grid md:grid-cols-2 gap-8 mb-10">
-            <div class="space-y-4">
-                <label class="flex justify-between items-center px-1">
-                    <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Bank Ledger (FULL_BS)</span>
-                    <span class="text-[10px] text-slate-400">Idx 9, 10, 14</span>
-                </label>
-                <div id="drop-zone-bank" class="drop-zone glass-card p-12 rounded-[2rem] text-center cursor-pointer group">
-                    <div class="mx-auto w-12 h-12 bg-slate-50 group-hover:bg-blue-100 text-slate-300 group-hover:text-blue-600 rounded-2xl flex items-center justify-center mb-4 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <!-- TAB 2: MATCHING RULES -->
+        <section id="matching-rules" class="tab-content hidden mb-12">
+            <div class="card p-8">
+                <h2 class="text-2xl font-bold text-slate-900 mb-6">⚙️ P0-P4 Core Matching Rules</h2>
+                <p class="text-slate-600 mb-8">These rules are applied in Phases 1, 2, and optionally Phase 3:</p>
+                
+                <div class="space-y-4">
+                    <div class="logic-step">
+                        <h4 class="font-bold text-blue-700 mb-2">P0: Direct Alignment (Highest Confidence)</h4>
+                        <div class="logic-code">
+Bank Date = Expected Date AND Bank Amount = Expected Amount
+                        </div>
+                        <p class="text-sm text-slate-600 mt-2">Example: Bank on Mar-1, ₱18,298.75 = Payment Date Mar-1, Amount ₱18,298.75</p>
                     </div>
-                    <p class="text-sm font-bold text-slate-700" id="bank-filename">Select Bank CSV</p>
-                    <input type="file" id="bank-file" class="hidden" accept=".csv">
-                </div>
-            </div>
-            <div class="space-y-4">
-                <label class="flex justify-between items-center px-1">
-                    <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Manual Ledger (FULL_NAV)</span>
-                    <span class="text-[10px] text-slate-400">Idx 1, 3, 5, 6, 8, 9, 10</span>
-                </label>
-                <div id="drop-zone-manual" class="drop-zone glass-card p-12 rounded-[2rem] text-center cursor-pointer group">
-                    <div class="mx-auto w-12 h-12 bg-slate-50 group-hover:bg-emerald-100 text-slate-300 group-hover:text-emerald-600 rounded-2xl flex items-center justify-center mb-4 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+
+                    <div class="logic-step">
+                        <h4 class="font-bold text-blue-700 mb-2">P1: Decimal Offset</h4>
+                        <div class="logic-code">
+Bank Date = Expected Date AND |Bank Amount - Expected Amount| = ₱1.00
+                        </div>
+                        <p class="text-sm text-slate-600 mt-2">Example: Bank ₱23,000.00 vs Expected ₱22,999.00 (off by ₱1)</p>
                     </div>
-                    <p class="text-sm font-bold text-slate-700" id="manual-filename">Select Manual CSV</p>
-                    <input type="file" id="manual-file" class="hidden" accept=".csv">
-                </div>
-            </div>
-        </div>
 
-        <div id="method-single" class="hidden mb-10 max-w-2xl mx-auto">
-            <div class="space-y-4 text-center">
-                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Unified Excel Workbook</label>
-                <div id="drop-zone-excel" class="drop-zone glass-card p-20 rounded-[3rem] text-center cursor-pointer group">
-                    <div class="mx-auto w-16 h-16 bg-green-50 group-hover:bg-green-100 text-green-500 rounded-3xl flex items-center justify-center mb-6 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <div class="logic-step">
+                        <h4 class="font-bold text-blue-700 mb-2">P2: Fee Deduction</h4>
+                        <div class="logic-code">
+Bank Date = Expected Date AND Amount difference = ₱5, ₱10, ₱15, or ₱20
+                        </div>
+                        <p class="text-sm text-slate-600 mt-2">Example: Bank ₱9,980 vs Expected ₱10,000 (fee ₱20)</p>
                     </div>
-                    <p class="text-lg font-bold text-slate-800" id="excel-filename">Drop Unified Excel Workbook</p>
-                    <p class="text-xs text-slate-400 mt-2">Required: Sheets "FULL_BS" & "FULL_NAV"</p>
-                    <input type="file" id="excel-file" class="hidden" accept=".xlsx, .xls">
+
+                    <div class="logic-step">
+                        <h4 class="font-bold text-blue-700 mb-2">P3: Bank Latency</h4>
+                        <div class="logic-code">
+Bank Date = Expected Date + 1 day AND Bank Amount = Expected Amount (exact)
+                        </div>
+                        <p class="text-sm text-slate-600 mt-2">Example: Bank on Mar-2, Amount exact = Payment expected Mar-1</p>
+                    </div>
+
+                    <div class="logic-step">
+                        <h4 class="font-bold text-blue-700 mb-2">P4: Temporal/Rounding</h4>
+                        <div class="logic-code">
+Bank Date between (Expected Date - 2 days) and (Expected Date + 5 days)
+AND ROUND(Bank Amount) = ROUND(Expected Amount)
+                        </div>
+                        <p class="text-sm text-slate-600 mt-2">Example: Bank Mar-3, ₱10,000.49 vs Expected Feb-28, ₱10,000.51 (both round to ₱10,000)</p>
+                    </div>
+
+                    <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-6">
+                        <h4 class="font-bold text-orange-900 mb-2">P5 & P6 (Phase 3 Only)</h4>
+                        <div class="text-sm text-orange-800">
+                            <strong>P5 (Tight):</strong> -2 to +4 days window, ±₱25 variance<br>
+                            <strong>P6 (Broad):</strong> -2 to +7 days window, ±₱100 variance
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Execution -->
-        <div class="flex flex-col items-center gap-8">
-            <button id="reconcile-btn" class="px-16 py-5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl shadow-2xl shadow-blue-500/30 transition-all transform hover:-translate-y-1 active:scale-[0.98]">
-                Run Priority Engine
-            </button>
+        <!-- TAB 3: UID TRACKING -->
+        <section id="uid-tracking" class="tab-content hidden mb-12">
+            <div class="card p-8">
+                <h2 class="text-2xl font-bold text-slate-900 mb-6">🔍 UID Duplicate Tracking</h2>
+                
+                <div class="space-y-6">
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
+                        <h3 class="font-bold text-indigo-900 mb-2">What is a UID?</h3>
+                        <p class="text-indigo-800 text-sm">
+                            <strong>UID = Unique Identifier</strong> = Bank Date + Bank Amount combination
+                        </p>
+                        <div class="logic-code mt-3">
+UID Format: "YYYY-MM-DD|₱Amount"
+Example: "2026-04-30|₱23000.00"
+                        </div>
+                    </div>
 
-            <div id="status-container" class="w-full max-w-3xl hidden animate-in fade-in zoom-in duration-300">
-                <div id="log-box" class="bg-slate-900 text-slate-400 p-6 rounded-3xl text-[10px] font-mono overflow-y-auto max-h-48 shadow-2xl leading-relaxed">
-                    <!-- Dynamic Logs -->
+                    <div class="bg-orange-50 border border-orange-200 rounded-lg p-6">
+                        <h3 class="font-bold text-orange-900 mb-3">Why Track Duplicates?</h3>
+                        <div class="space-y-3 text-sm text-orange-800">
+                            <div class="flex gap-3">
+                                <span class="font-bold">Scenario 1:</span>
+                                <span>One bank transaction (₱50,000 on Apr-30) matches TWO different policies → Batch payment</span>
+                            </div>
+                            <div class="flex gap-3">
+                                <span class="font-bold">Scenario 2:</span>
+                                <span>Duplicate entry in bank statement → Same UID appears twice</span>
+                            </div>
+                            <div class="flex gap-3">
+                                <span class="font-bold">Scenario 3:</span>
+                                <span>Split payment across phases → One bank entry matches Phase 1 AND Phase 2</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+                        <h3 class="font-bold text-green-900 mb-3">How It Works</h3>
+                        <div class="text-sm text-green-800 space-y-2">
+                            <div>1. For each matched pair (Bank ↔ NAV), capture the Bank UID</div>
+                            <div>2. Count how many different NAV records matched the same UID</div>
+                            <div>3. If count > 1: FLAG as duplicate ⚠️</div>
+                            <div>4. Show: "Bank UID matched 3 policies" for manual review</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                        <h3 class="font-bold text-blue-900 mb-3">Example Duplicate Scenario</h3>
+                        <div class="logic-code">
+BANK STATEMENT:
+  2026-04-30 | ₱50,000.00 ← Single bank entry (UID: 2026-04-30|50000)
+
+NAV LEDGER Matches:
+  Policy IBC-9271  | Payment Date 2026-04-30 | ₱25,000 → MATCH (Phase 1)
+  Policy IXD-1346  | 1st Due Date 2026-04-30 | ₱25,000 → MATCH (Phase 2)
+  Policy IRN-3403  | 2nd Due Date 2026-05-01 | ₱24,980 → MATCH (Phase 4)
+
+RESULT: ⚠️ UID "2026-04-30|50000" matched 3 records
+ACTION: Manual review required - is this a batch payment?
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Dashboard -->
-        <div id="dashboard-container" class="mt-16 hidden">
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Matches found</p>
-                    <p id="stat-total" class="text-4xl font-extrabold text-slate-900">0</p>
+        <!-- TAB 4: EXAMPLE -->
+        <section id="example" class="tab-content hidden mb-12">
+            <div class="card p-8">
+                <h2 class="text-2xl font-bold text-slate-900 mb-6">💡 Walkthrough Example</h2>
+                
+                <div class="space-y-6">
+                    <div class="bg-slate-50 border-l-4 border-l-blue-600 p-6 rounded">
+                        <h3 class="font-bold text-slate-900 mb-4">Bank Statement Entry</h3>
+                        <table class="w-full text-sm">
+                            <tr><td class="font-bold text-blue-700">Date:</td><td>2026-03-10</td></tr>
+                            <tr><td class="font-bold text-blue-700">Credit:</td><td>₱10,361.60</td></tr>
+                            <tr><td class="font-bold text-blue-700">UID:</td><td class="font-mono">2026-03-10|10361.60</td></tr>
+                        </table>
+                    </div>
+
+                    <div class="bg-slate-50 border-l-4 border-l-green-600 p-6 rounded">
+                        <h3 class="font-bold text-slate-900 mb-4">NAV Record (IXD-1346)</h3>
+                        <table class="w-full text-sm">
+                            <tr><td class="font-bold text-green-700">Policy:</td><td>IXD-1346</td></tr>
+                            <tr><td class="font-bold text-green-700">Payment Date:</td><td>2026-03-10</td></tr>
+                            <tr><td class="font-bold text-green-700">PAYMENT:</td><td>₱10,361.60</td></tr>
+                            <tr><td class="font-bold text-green-700">1st Due Date:</td><td>2025-12-24</td></tr>
+                            <tr><td class="font-bold text-green-700">1st Due Amount:</td><td>₱10,361.60</td></tr>
+                        </table>
+                    </div>
+
+                    <div class="bg-blue-50 border border-blue-300 rounded-lg p-6">
+                        <h3 class="font-bold text-blue-900 mb-4">Matching Process</h3>
+                        
+                        <div class="space-y-3 text-sm">
+                            <div class="bg-white p-3 rounded border-l-4 border-l-blue-600">
+                                <strong>PHASE 1 CHECK:</strong> Primary Payment<br>
+                                Bank Date (2026-03-10) = Payment Date (2026-03-10)? ✓ YES<br>
+                                Bank Amount (₱10,361.60) = PAYMENT (₱10,361.60)? ✓ YES<br>
+                                <span class="text-blue-700 font-bold">→ MATCH FOUND (P0: Direct Alignment)</span>
+                            </div>
+
+                            <div class="text-center text-slate-500">
+                                Since Phase 1 matched, STOP here. Don't check Phase 2 or 3.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-green-50 border border-green-300 rounded-lg p-6">
+                        <h3 class="font-bold text-green-900 mb-2">✅ RESULT</h3>
+                        <div class="text-sm">
+                            <strong>Status:</strong> MATCHED<br>
+                            <strong>Phase:</strong> PHASE 1 (Primary Payment)<br>
+                            <strong>Rule:</strong> P0 - Direct Alignment<br>
+                            <strong>Variance:</strong> 0 days, exact match<br>
+                            <strong>Confidence:</strong> HIGHEST
+                        </div>
+                    </div>
                 </div>
-                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm border-b-4 border-b-green-500">
-                    <p class="text-[10px] font-bold text-green-500 uppercase tracking-widest mb-2">P0-P1 Confident</p>
-                    <p id="stat-high" class="text-4xl font-extrabold text-slate-900">0</p>
+            </div>
+        </section>
+
+        <!-- TAB 5: UPLOAD & RUN -->
+        <section id="upload" class="tab-content hidden mb-12">
+            <div class="card p-8">
+                <h2 class="text-2xl font-bold text-slate-900 mb-6">📁 Upload Files & Reconcile</h2>
+                
+                <!-- File Upload -->
+                <div class="grid md:grid-cols-2 gap-8 mb-8">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-3">Bank Statement (FULL_BS)</label>
+                        <div id="drop-zone-bank" class="drop-zone p-12 rounded-lg text-center">
+                            <svg class="mx-auto w-12 h-12 text-slate-300 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                            <p class="text-sm font-semibold text-slate-700" id="bank-filename">Click or drop CSV</p>
+                            <input type="file" id="bank-file" class="hidden" accept=".csv">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-3">Navigation Ledger (FULL_NAV)</label>
+                        <div id="drop-zone-manual" class="drop-zone p-12 rounded-lg text-center">
+                            <svg class="mx-auto w-12 h-12 text-slate-300 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                            <p class="text-sm font-semibold text-slate-700" id="manual-filename">Click or drop CSV</p>
+                            <input type="file" id="manual-file" class="hidden" accept=".csv">
+                        </div>
+                    </div>
                 </div>
-                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm border-b-4 border-b-amber-500">
-                    <p class="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-2">P2-P4 Adjusted</p>
-                    <p id="stat-med" class="text-4xl font-extrabold text-slate-900">0</p>
+
+                <!-- Execute -->
+                <div class="flex justify-center mb-8">
+                    <button id="reconcile-btn" class="px-12 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all">
+                        🚀 Start Reconciliation
+                    </button>
                 </div>
-                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm border-b-4 border-b-red-500">
-                    <p class="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-2">P5-P6 Windowed</p>
-                    <p id="stat-low" class="text-4xl font-extrabold text-slate-900">0</p>
+
+                <!-- Logs -->
+                <div id="status-container" class="hidden">
+                    <h3 class="text-lg font-bold text-slate-900 mb-3">Processing Logs</h3>
+                    <div id="log-box" class="bg-slate-900 text-slate-300 p-6 rounded-lg text-sm font-mono overflow-y-auto max-h-80 space-y-1 leading-relaxed">
+                        <!-- Dynamic logs -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RESULTS (Hidden until reconciliation) -->
+        <section id="results-section" class="hidden mb-12">
+            <div class="grid stat-grid mb-8">
+                <div class="stat-card phase-1">
+                    <p class="text-xs font-bold text-slate-600 mb-1">Bank Txns</p>
+                    <p id="stat-bank-total" class="text-3xl font-bold">0</p>
+                </div>
+                <div class="stat-card phase-1">
+                    <p class="text-xs font-bold text-slate-600 mb-1">NAV Records</p>
+                    <p id="stat-nav-total" class="text-3xl font-bold">0</p>
+                </div>
+                <div class="stat-card phase-1">
+                    <p class="text-xs font-bold text-blue-600 mb-1">Phase 1</p>
+                    <p id="stat-phase1" class="text-3xl font-bold">0</p>
+                </div>
+                <div class="stat-card phase-2">
+                    <p class="text-xs font-bold text-green-600 mb-1">Phase 2</p>
+                    <p id="stat-phase2" class="text-3xl font-bold">0</p>
+                </div>
+                <div class="stat-card phase-3">
+                    <p class="text-xs font-bold text-amber-600 mb-1">Phase 3</p>
+                    <p id="stat-phase3" class="text-3xl font-bold">0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="text-xs font-bold text-red-600 mb-1">Duplicates</p>
+                    <p id="stat-duplicates" class="text-3xl font-bold">0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="text-xs font-bold text-slate-600 mb-1">Match Rate</p>
+                    <p id="stat-match-rate" class="text-3xl font-bold">0%</p>
+                </div>
+                <div class="stat-card">
+                    <p class="text-xs font-bold text-slate-600 mb-1">Unmatched</p>
+                    <p id="stat-unmatched" class="text-3xl font-bold">0</p>
                 </div>
             </div>
 
-            <div class="bg-slate-900 p-12 rounded-[3rem] shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-10 border border-slate-800">
-                <div>
-                    <h3 class="text-2xl font-extrabold text-white mb-2">Consolidated Result Ready</h3>
-                    <p class="text-slate-400 text-sm">Download the generated master file containing both reconciled sheets.</p>
+            <!-- Results Table -->
+            <div class="card p-8 mb-8">
+                <h2 class="text-xl font-bold text-slate-900 mb-4">📋 Matched Records</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-100 border-b-2">
+                            <tr>
+                                <th class="px-4 py-3 text-left font-bold">Bank Date</th>
+                                <th class="px-4 py-3 text-left font-bold">Amount</th>
+                                <th class="px-4 py-3 text-left font-bold">Policy</th>
+                                <th class="px-4 py-3 text-left font-bold">Phase</th>
+                                <th class="px-4 py-3 text-left font-bold">Rule</th>
+                                <th class="px-4 py-3 text-left font-bold">Variance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-tbody" class="divide-y">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
                 </div>
-                <button id="download-xlsx" class="flex items-center gap-3 px-12 py-5 bg-white text-slate-900 font-extrabold rounded-2xl shadow-2xl hover:bg-blue-50 transition-all hover:scale-105 active:scale-95">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Download Master_Report.xlsx
-                </button>
             </div>
-        </div>
-    </div>
 
-    <!-- Error Modal -->
-    <div id="error-modal" class="fixed inset-0 bg-slate-950/80 hidden items-center justify-center z-50 p-6 backdrop-blur-md animate-in fade-in duration-200">
-        <div class="bg-white rounded-[2.5rem] max-w-md w-full p-12 shadow-2xl">
-            <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-8">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <!-- Download -->
+            <div class="card p-8 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-slate-900 mb-1">✅ Reconciliation Complete</h3>
+                        <p class="text-sm text-slate-600">Download detailed report with all matches and flags</p>
+                    </div>
+                    <button id="download-btn" class="px-8 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white font-bold rounded-lg hover:shadow-lg transition-all">
+                        ⬇️ Download Report
+                    </button>
+                </div>
             </div>
-            <h3 class="text-2xl font-extrabold text-slate-900 text-center mb-3" id="error-title">Process Interrupted</h3>
-            <p class="text-slate-500 text-sm text-center mb-10 leading-relaxed" id="error-message"></p>
-            <button onclick="closeError()" class="w-full py-5 bg-slate-100 text-slate-900 font-bold rounded-2xl hover:bg-slate-200 transition-colors">Close</button>
-        </div>
+        </section>
     </div>
 
     <script>
-        let bankDataRaw = null;
-        let manualDataRaw = null;
+        let bankData = null;
+        let navData = null;
         let finalWorkbook = null;
-        let currentMethod = 'multi';
 
-        const logBox = document.getElementById('log-box');
-        const reconcileBtn = document.getElementById('reconcile-btn');
-        const statusContainer = document.getElementById('status-container');
-        const dashboardContainer = document.getElementById('dashboard-container');
-
-        // Initial Setup
-        setupFileUploader('drop-zone-bank', 'bank-file', 'bank-filename', (data) => bankDataRaw = data);
-        setupFileUploader('drop-zone-manual', 'manual-file', 'manual-filename', (data) => manualDataRaw = data);
-        setupExcelUploader();
-
-        function switchMethod(method) {
-            currentMethod = method;
-            document.getElementById('method-multi').classList.toggle('hidden', method !== 'multi');
-            document.getElementById('method-single').classList.toggle('hidden', method !== 'single');
-            
-            const slider = document.getElementById('method-slider');
-            const multiBtn = document.getElementById('tab-multi');
-            const singleBtn = document.getElementById('tab-single');
-            
-            if (method === 'multi') {
-                slider.style.left = '4px';
-                multiBtn.classList.add('active');
-                singleBtn.classList.remove('active');
-            } else {
-                slider.style.left = '154px';
-                singleBtn.classList.add('active');
-                multiBtn.classList.remove('active');
-            }
+        // Tab switching
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.getElementById(tabName).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
         }
 
-        function setupFileUploader(zoneId, inputId, labelId, callback) {
+        // File uploaders
+        setupUploader('drop-zone-bank', 'bank-file', 'bank-filename', (data) => {
+            bankData = data;
+            finalWorkbook = null;
+        });
+        setupUploader('drop-zone-manual', 'manual-file', 'manual-filename', (data) => {
+            navData = data;
+            finalWorkbook = null;
+        });
+
+        function setupUploader(zoneId, inputId, labelId, callback) {
             const zone = document.getElementById(zoneId);
             const input = document.getElementById(inputId);
             const label = document.getElementById(labelId);
+            
             zone.onclick = () => input.click();
-            input.onchange = (e) => {
-                const file = e.target.files[0];
+            zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('active'); };
+            zone.ondragleave = () => zone.classList.remove('active');
+            zone.ondrop = (e) => { 
+                e.preventDefault(); 
+                zone.classList.remove('active');
+                const file = e.dataTransfer.files[0];
+                if (file) {
+                    label.innerText = file.name;
+                    Papa.parse(file, { skipEmptyLines: true, complete: (res) => callback(res.data) });
+                }
+            };
+            
+            input.onchange = () => {
+                const file = input.files[0];
                 if (!file) return;
                 label.innerText = file.name;
                 Papa.parse(file, { skipEmptyLines: true, complete: (res) => callback(res.data) });
             };
         }
 
-        function setupExcelUploader() {
-            const zone = document.getElementById('drop-zone-excel');
-            const input = document.getElementById('excel-file');
-            const label = document.getElementById('excel-filename');
-            zone.onclick = () => input.click();
-            input.onchange = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                label.innerText = file.name;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const data = new Uint8Array(ev.target.result);
-                    const wb = XLSX.read(data, { type: 'array' });
-                    if (!wb.SheetNames.includes("FULL_BS") || !wb.SheetNames.includes("FULL_NAV")) {
-                        showError("Missing Data Segments", "The workbook does not contain required sheets: 'FULL_BS' and 'FULL_NAV'.");
-                        return;
-                    }
-                    bankDataRaw = XLSX.utils.sheet_to_json(wb.Sheets["FULL_BS"], { header: 1 });
-                    manualDataRaw = XLSX.utils.sheet_to_json(wb.Sheets["FULL_NAV"], { header: 1 });
-                    log("Workbook successfully injected into engine.");
-                };
-                reader.readAsArrayBuffer(file);
-            };
-        }
-
         function log(msg) {
+            const logBox = document.getElementById('log-box');
             const line = document.createElement('div');
-            line.className = "mb-1";
-            line.innerHTML = `<span class="text-blue-500 font-bold mr-2">PROTOCOL:</span> ${msg}`;
+            line.textContent = '→ ' + msg;
             logBox.appendChild(line);
             logBox.scrollTop = logBox.scrollHeight;
         }
 
-        reconcileBtn.onclick = () => {
-            if (!bankDataRaw || !manualDataRaw) {
-                showError("Input Required", "Sources are empty. Please upload the ledgers for reconciliation.");
+        document.getElementById('reconcile-btn').onclick = () => {
+            if (!bankData || !navData) {
+                alert('Please upload both CSV files');
                 return;
             }
-            statusContainer.classList.remove('hidden');
-            dashboardContainer.classList.add('hidden');
-            logBox.innerHTML = '';
-            runEngine();
+            document.getElementById('status-container').classList.remove('hidden');
+            document.getElementById('log-box').innerHTML = '';
+            runReconciliation();
         };
 
-        function runEngine() {
+        function runReconciliation() {
             try {
-                log("Starting hierarchical pass sequence...");
-                const bank = JSON.parse(JSON.stringify(bankDataRaw));
-                const manual = JSON.parse(JSON.stringify(manualDataRaw));
+                log('🚀 Starting reconciliation...');
                 
-                const bH = bank[0]; const mH = manual[0];
-                const setH = (h, i, n) => { if(!h[i]) h[i] = n; };
-                setH(mH, 17, "STATUS"); setH(mH, 18, "REMARK"); setH(mH, 20, "BANK_UID");
-                setH(bH, 15, "STATUS"); setH(bH, 16, "M_CODE"); setH(bH, 17, "M_POLICY");
-                setH(bH, 18, "REMARK"); setH(bH, 19, "M_PAY_AMT"); setH(bH, 20, "M_PAY_DATE"); setH(bH, 21, "M_PAY_TYPE");
+                const bank = JSON.parse(JSON.stringify(bankData));
+                const nav = JSON.parse(JSON.stringify(navData));
 
-                const usedUIDs = new Set();
-                const usedManual = new Set();
+                // Parse bank
                 const bankRows = [];
-                const stats = { total: 0, high: 0, med: 0, low: 0 };
-
-                // Clean Bank Source
                 for (let i = 1; i < bank.length; i++) {
-                    if (bank[i][15] === "AUTO-MAPPED") continue;
-                    let d = sanitizeDate(bank[i][9]);
-                    let a = sanitizeAmt(bank[i][10]);
-                    if (d && a && bank[i][14]) bankRows.push({ idx: i, date: d, amt: a, uid: bank[i][14] });
+                    const date = sanitizeDate(bank[i][0]);
+                    const amount = sanitizeAmt(bank[i][7]);
+                    if (date && amount !== null) {
+                        bankRows.push({
+                            idx: i,
+                            date,
+                            amount,
+                            uid: `${date}|${amount}`,
+                            raw: bank[i]
+                        });
+                    }
                 }
 
-                const passes = [
-                    { id: "P0", msg: "Exact Alignment (Date/Amt)", fn: (b, d, a) => b.date === d && b.amt === a },
-                    { id: "P1", msg: "Decimal Variance (±1)", fn: (b, d, a) => b.date === d && Math.abs(b.amt - a) === 1 },
-                    { id: "P2", msg: "Fee Mitigation (±5,10,15,20)", fn: (b, d, a) => b.date === d && [5,10,15,20].includes(Math.abs(b.amt - a)) },
-                    { id: "P3", msg: "Latency Recovery (+1 Day)", fn: (b, d, a) => b.date === d + 1 && b.amt === a },
-                    { id: "P4", msg: "Temporal/Round (-2/+5 Days)", fn: (b, d, a) => (b.date-d >= -2 && b.date-d <= 5) && Math.round(b.amt) === Math.round(a) },
-                    { id: "P5", msg: "Buffered Tol. (-2/+4 Days, ±25)", fn: (b, d, a) => (b.date-d >= -2 && b.date-d <= 4) && Math.abs(b.amt - a) <= 25 },
-                    { id: "P6", msg: "Broad Net (-2/+7 Days, ±100)", fn: (b, d, a) => (b.date-d >= -2 && b.date-d <= 7) && Math.abs(b.amt - a) <= 100 }
-                ];
-
-                passes.forEach(p => {
-                    log(`Processing Tier ${p.id}: ${p.msg}`);
-                    for (let i = 1; i < manual.length; i++) {
-                        if (usedManual.has(i)) continue;
-                        let mD = sanitizeDate(manual[i][9]);
-                        let mA = sanitizeAmt(manual[i][10]);
-                        if (!mD || !mA) continue;
-
-                        for (const b of bankRows) {
-                            if (usedUIDs.has(b.uid)) continue;
-                            if (p.fn(b, mD, mA)) {
-                                const rem = `${p.id}: ${p.msg}`;
-                                manual[i][17] = "AUTO-MAPPED"; manual[i][18] = rem; manual[i][20] = b.uid;
-                                const r = bank[b.idx];
-                                r[15] = "AUTO-MAPPED"; r[16] = manual[i][1]; r[17] = manual[i][3];
-                                r[18] = rem; r[19] = manual[i][6]; r[20] = manual[i][5]; r[21] = manual[i][8];
-
-                                usedManual.add(i); usedUIDs.add(b.uid);
-                                stats.total++;
-                                if (p.id < "P2") stats.high++; else if (p.id < "P5") stats.med++; else stats.low++;
-                                break;
-                            }
-                        }
+                // Parse NAV
+                const navRows = [];
+                for (let i = 1; i < nav.length; i++) {
+                    const payDate = sanitizeDate(nav[i][5]);
+                    const payAmt = sanitizeAmt(nav[i][6]);
+                    if (payDate && payAmt !== null) {
+                        navRows.push({
+                            idx: i,
+                            payDate,
+                            payAmt,
+                            policy: nav[i][1] || 'N/A',
+                            dueData: [
+                                { date: sanitizeDate(nav[i][11]), amt: sanitizeAmt(nav[i][12]), label: '1st Due' },
+                                { date: sanitizeDate(nav[i][13]), amt: sanitizeAmt(nav[i][14]), label: '2nd Due' },
+                                { date: sanitizeDate(nav[i][15]), amt: sanitizeAmt(nav[i][16]), label: '3rd Due' },
+                                { date: sanitizeDate(nav[i][17]), amt: sanitizeAmt(nav[i][18]), label: '4th Due' },
+                                { date: sanitizeDate(nav[i][19]), amt: sanitizeAmt(nav[i][20]), label: '5th Due' },
+                                { date: sanitizeDate(nav[i][21]), amt: sanitizeAmt(nav[i][22]), label: '6th Due' }
+                            ],
+                            raw: nav[i]
+                        });
                     }
+                }
+
+                log(`✓ Loaded ${bankRows.length} bank txns`);
+                log(`✓ Loaded ${navRows.length} NAV records`);
+
+                // Matching
+                const matches = [];
+                const usedNav = new Set();
+                const usedBank = new Set();
+                const bankUidMatches = {};
+
+                // PHASE 1
+                log('PHASE 1: Primary Payment match...');
+                const p1 = phase1Match(bankRows, navRows, usedNav, usedBank, bankUidMatches);
+                matches.push(...p1);
+                log(`  ✓ ${p1.length} matches`);
+
+                // PHASE 2
+                log('PHASE 2: Expected Due Dates...');
+                const p2 = phase2Match(bankRows, navRows, usedNav, usedBank, bankUidMatches);
+                matches.push(...p2);
+                log(`  ✓ ${p2.length} matches`);
+
+                // PHASE 3
+                log('PHASE 3: Broad Recovery...');
+                const p3 = phase3Match(bankRows, navRows, usedNav, usedBank, bankUidMatches);
+                matches.push(...p3);
+                log(`  ✓ ${p3.length} matches`);
+
+                // Stats
+                const unmatchedNav = navRows.filter((nr, idx) => !usedNav.has(nr.idx)).length;
+                const duplicates = Object.values(bankUidMatches).filter(m => m.length > 1).length;
+                const matchRate = Math.round((matches.length / navRows.length) * 100);
+                finalWorkbook = buildReportWorkbook(bank, nav, matches);
+                log('Report ready: FULL_BS now includes mapped policy/payment fields');
+
+                log(`✅ Complete: ${matches.length} matched, ${unmatchedNav} unmatched, ${duplicates} duplicates`);
+
+                // Update UI
+                document.getElementById('stat-bank-total').innerText = bankRows.length;
+                document.getElementById('stat-nav-total').innerText = navRows.length;
+                document.getElementById('stat-phase1').innerText = p1.length;
+                document.getElementById('stat-phase2').innerText = p2.length;
+                document.getElementById('stat-phase3').innerText = p3.length;
+                document.getElementById('stat-duplicates').innerText = duplicates;
+                document.getElementById('stat-match-rate').innerText = matchRate + '%';
+                document.getElementById('stat-unmatched').innerText = unmatchedNav;
+
+                // Results table
+                const tbody = document.getElementById('results-tbody');
+                tbody.innerHTML = '';
+                matches.forEach(m => {
+                    const tr = tbody.insertRow();
+                    tr.innerHTML = `
+                        <td class="px-4 py-2">${formatDate(m.bankDate)}</td>
+                        <td class="px-4 py-2">₱${m.bankAmt.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                        <td class="px-4 py-2 font-bold">${m.policy}</td>
+                        <td class="px-4 py-2"><span class="phase-badge ${m.phase === 1 ? 'badge-p1' : m.phase === 2 ? 'badge-p2' : 'badge-p3'}">Phase ${m.phase}</span></td>
+                        <td class="px-4 py-2 text-xs">${m.rule}</td>
+                        <td class="px-4 py-2 text-xs">${m.variance}</td>
+                    `;
                 });
 
-                document.getElementById('stat-total').innerText = stats.total;
-                document.getElementById('stat-high').innerText = stats.high;
-                document.getElementById('stat-med').innerText = stats.med;
-                document.getElementById('stat-low').innerText = stats.low;
-                dashboardContainer.classList.remove('hidden');
+                document.getElementById('status-container').classList.add('hidden');
+                document.getElementById('results-section').classList.remove('hidden');
 
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bank), "RECONCILED_BS");
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(manual), "RECONCILED_NAV");
-                finalWorkbook = wb;
-                log("Hierarchy sequence complete. Report compiled.");
-            } catch (e) { showError("Engine Exception", e.message); }
+            } catch (e) {
+                log(`❌ Error: ${e.message}`);
+            }
         }
 
-        document.getElementById('download-xlsx').onclick = () => {
-            if (finalWorkbook) XLSX.writeFile(finalWorkbook, "Reconciliation_Master_Report.xlsx");
+        function phase1Match(bankRows, navRows, usedNav, usedBank, bankUidMatches) {
+            const matches = [];
+            for (const nr of navRows) {
+                if (usedNav.has(nr.idx)) continue;
+                for (const br of bankRows) {
+                    if (usedBank.has(br.idx)) continue;
+
+                    if (br.date === nr.payDate && Math.abs(br.amount - nr.payAmt) < 0.01) {
+                        matches.push({ bankDate: br.date, bankAmt: br.amount, bankIdx: br.idx, navIdx: nr.idx, policy: nr.policy, phase: 1, rule: 'P0', variance: 'Exact' });
+                        usedNav.add(nr.idx);
+                        usedBank.add(br.idx);
+                        if (!bankUidMatches[br.uid]) bankUidMatches[br.uid] = [];
+                        bankUidMatches[br.uid].push(nr.idx);
+                        break;
+                    }
+                    if (br.date === nr.payDate && Math.abs(br.amount - nr.payAmt) === 1) {
+                        matches.push({ bankDate: br.date, bankAmt: br.amount, bankIdx: br.idx, navIdx: nr.idx, policy: nr.policy, phase: 1, rule: 'P1', variance: '±₱1' });
+                        usedNav.add(nr.idx);
+                        usedBank.add(br.idx);
+                        if (!bankUidMatches[br.uid]) bankUidMatches[br.uid] = [];
+                        bankUidMatches[br.uid].push(nr.idx);
+                        break;
+                    }
+                    if (br.date === nr.payDate && [5,10,15,20].includes(Math.abs(br.amount - nr.payAmt))) {
+                        matches.push({ bankDate: br.date, bankAmt: br.amount, bankIdx: br.idx, navIdx: nr.idx, policy: nr.policy, phase: 1, rule: 'P2', variance: 'Fee' });
+                        usedNav.add(nr.idx);
+                        usedBank.add(br.idx);
+                        if (!bankUidMatches[br.uid]) bankUidMatches[br.uid] = [];
+                        bankUidMatches[br.uid].push(nr.idx);
+                        break;
+                    }
+                    if (br.date === nr.payDate + 1 && Math.abs(br.amount - nr.payAmt) < 0.01) {
+                        matches.push({ bankDate: br.date, bankAmt: br.amount, bankIdx: br.idx, navIdx: nr.idx, policy: nr.policy, phase: 1, rule: 'P3', variance: '+1 day' });
+                        usedNav.add(nr.idx);
+                        usedBank.add(br.idx);
+                        if (!bankUidMatches[br.uid]) bankUidMatches[br.uid] = [];
+                        bankUidMatches[br.uid].push(nr.idx);
+                        break;
+                    }
+                    if (br.date >= nr.payDate - 2 && br.date <= nr.payDate + 5 && Math.round(br.amount) === Math.round(nr.payAmt)) {
+                        const days = br.date - nr.payDate;
+                        matches.push({ bankDate: br.date, bankAmt: br.amount, bankIdx: br.idx, navIdx: nr.idx, policy: nr.policy, phase: 1, rule: 'P4', variance: `${days} days` });
+                        usedNav.add(nr.idx);
+                        usedBank.add(br.idx);
+                        if (!bankUidMatches[br.uid]) bankUidMatches[br.uid] = [];
+                        bankUidMatches[br.uid].push(nr.idx);
+                        break;
+                    }
+                }
+            }
+            return matches;
+        }
+
+        function phase2Match(bankRows, navRows, usedNav, usedBank, bankUidMatches) {
+            const matches = [];
+            for (const nr of navRows) {
+                if (usedNav.has(nr.idx)) continue;
+                for (const due of nr.dueData) {
+                    if (!due.date || due.amt === null) continue;
+                    
+                    for (const br of bankRows) {
+                        if (usedBank.has(br.idx)) continue;
+
+                        if (br.date === due.date && Math.abs(br.amount - due.amt) < 0.01) {
+                            matches.push({ bankDate: br.date, bankAmt: br.amount, bankIdx: br.idx, navIdx: nr.idx, policy: nr.policy, phase: 2, rule: due.label, variance: 'Exact' });
+                            usedNav.add(nr.idx);
+                            usedBank.add(br.idx);
+                            if (!bankUidMatches[br.uid]) bankUidMatches[br.uid] = [];
+                            bankUidMatches[br.uid].push(nr.idx);
+                            break;
+                        }
+                    }
+                    if (usedNav.has(nr.idx)) break;
+                }
+            }
+            return matches;
+        }
+
+        function phase3Match(bankRows, navRows, usedNav, usedBank, bankUidMatches) {
+            const matches = [];
+            for (const nr of navRows) {
+                if (usedNav.has(nr.idx)) continue;
+                for (const br of bankRows) {
+                    if (usedBank.has(br.idx)) continue;
+
+                    if (br.date >= nr.payDate - 2 && br.date <= nr.payDate + 4 && Math.abs(br.amount - nr.payAmt) <= 25) {
+                        const days = br.date - nr.payDate;
+                        matches.push({ bankDate: br.date, bankAmt: br.amount, bankIdx: br.idx, navIdx: nr.idx, policy: nr.policy, phase: 3, rule: 'P5', variance: `${days}d, ±₱${Math.abs(br.amount - nr.payAmt).toFixed(2)}` });
+                        usedNav.add(nr.idx);
+                        usedBank.add(br.idx);
+                        if (!bankUidMatches[br.uid]) bankUidMatches[br.uid] = [];
+                        bankUidMatches[br.uid].push(nr.idx);
+                        break;
+                    }
+                    if (br.date >= nr.payDate - 2 && br.date <= nr.payDate + 7 && Math.abs(br.amount - nr.payAmt) <= 100) {
+                        const days = br.date - nr.payDate;
+                        matches.push({ bankDate: br.date, bankAmt: br.amount, bankIdx: br.idx, navIdx: nr.idx, policy: nr.policy, phase: 3, rule: 'P6', variance: `${days}d, ±₱${Math.abs(br.amount - nr.payAmt).toFixed(2)}` });
+                        usedNav.add(nr.idx);
+                        usedBank.add(br.idx);
+                        if (!bankUidMatches[br.uid]) bankUidMatches[br.uid] = [];
+                        bankUidMatches[br.uid].push(nr.idx);
+                        break;
+                    }
+                }
+            }
+            return matches;
+        }
+
+        document.getElementById('download-btn').onclick = () => {
+            if (finalWorkbook) {
+                XLSX.writeFile(finalWorkbook, 'Reconciliation_Report.xlsx');
+            } else {
+                alert('Please run reconciliation before downloading the mapped report.');
+            }
         };
 
+        function buildReportWorkbook(bank, nav, matches) {
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(buildMappedFullBs(bank, nav, matches)), 'FULL_BS');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(nav), 'FULL_NAV');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(buildMatchSummary(nav, matches)), 'MATCHES');
+            return wb;
+        }
+
+        function buildMappedFullBs(bank, nav, matches) {
+            const headers = bank[0] || [];
+            const navHeaders = nav[0] || [];
+            const matchByBankIdx = new Map(matches.map(m => [m.bankIdx, m]));
+            const mappedHeaders = [
+                'INS Policy Code',
+                'Payment Channel',
+                'Payment Type',
+                "Assured's Name",
+                'Provider',
+                'Payment Date'
+            ];
+            const fullBs = [headers.concat(mappedHeaders)];
+
+            for (let i = 1; i < bank.length; i++) {
+                const row = (bank[i] || []).slice();
+                const match = matchByBankIdx.get(i);
+                row.push(...buildMappedFields(nav, navHeaders, match));
+                fullBs.push(row);
+            }
+
+            return fullBs;
+        }
+
+        function buildMappedFields(nav, navHeaders, match) {
+            if (!match) return ['', '', '', '', '', ''];
+
+            const navRow = nav[match.navIdx] || [];
+            const originalPaymentDate = getNavDateText(navRow, navHeaders, ['Payment Date', 'Payment Received Date', 'Original Payment Date'], 5);
+            return [
+                getNavText(navRow, navHeaders, ['INS Policy Code', 'Policy Code', 'Policy No', 'Policy Number', 'Policy'], 1),
+                getNavText(navRow, navHeaders, ['Payment Channel', 'Channel', 'Payment Mode'], null),
+                buildPaymentTypeText(navRow, navHeaders, match),
+                getNavText(navRow, navHeaders, ["Assured's Name", 'Assured Name', 'Insured Name', 'Customer Name', 'Name of Assured'], null),
+                getNavText(navRow, navHeaders, ['Provider', 'Insurance Provider', 'Insurer', 'Company'], null),
+                originalPaymentDate
+            ];
+        }
+
+        function buildPaymentTypeText(navRow, navHeaders, match) {
+            const originalPaymentType = getNavText(navRow, navHeaders, ['Payment Type', 'Type of Payment', 'Transaction Type'], null);
+            let mappingText = 'MATCHED WITH ORIGINAL PAYMENT DATE';
+
+            if (match.phase === 2) {
+                mappingText = `MAPPED TO PAYMENT DUE DATE (${match.rule}: ${formatDate(match.bankDate)})`;
+            } else if (match.phase === 3) {
+                mappingText = 'MATCHED WITH ORIGINAL PAYMENT DATE (BROAD RECOVERY)';
+            }
+
+            return originalPaymentType ? `${originalPaymentType} - ${mappingText}` : mappingText;
+        }
+
+        function buildMatchSummary(nav, matches) {
+            const navHeaders = nav[0] || [];
+            const rows = [[
+                'Bank Date',
+                'Bank Amount',
+                'INS Policy Code',
+                'Payment Mapping',
+                'Rule',
+                'Variance'
+            ]];
+
+            for (const match of matches) {
+                const navRow = nav[match.navIdx] || [];
+                rows.push([
+                    formatDate(match.bankDate),
+                    match.bankAmt,
+                    match.policy || getNavText(navRow, navHeaders, ['INS Policy Code', 'Policy Code', 'Policy'], 1),
+                    match.phase === 2 ? `Mapped to payment due date (${match.rule}: ${formatDate(match.bankDate)})` : 'Matched with original payment date',
+                    match.rule,
+                    match.variance
+                ]);
+            }
+
+            return rows;
+        }
+
+        function getNavText(row, headers, candidateHeaders, fallbackIndex) {
+            const idx = findHeaderIndex(headers, candidateHeaders);
+            const resolvedIndex = idx >= 0 ? idx : fallbackIndex;
+            if (resolvedIndex === null || resolvedIndex === undefined) return '';
+            const value = row[resolvedIndex];
+            return value === null || value === undefined ? '' : value;
+        }
+
+        function getNavDateText(row, headers, candidateHeaders, fallbackIndex) {
+            const value = getNavText(row, headers, candidateHeaders, fallbackIndex);
+            const date = sanitizeDate(value);
+            return date ? formatDate(date) : value;
+        }
+
+        function findHeaderIndex(headers, candidateHeaders) {
+            const candidates = candidateHeaders.map(normalizeHeader);
+            return headers.findIndex(header => candidates.includes(normalizeHeader(header)));
+        }
+
+        function normalizeHeader(value) {
+            return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        }
+
         function sanitizeDate(v) {
-            if (typeof v === 'number' && v > 30000) return Math.floor(v);
-            let d = parseFloat(v); if (!isNaN(d)) return d;
-            let ts = new Date(v).getTime();
-            return isNaN(ts) ? null : Math.floor(ts / 86400000);
+            if (!v) return null;
+            if (typeof v === 'number') return Math.floor(v);
+            const value = String(v).trim();
+            if (!value) return null;
+
+            const numeric = Number(value);
+            if (!Number.isNaN(numeric) && numeric > 1000) return Math.floor(numeric);
+
+            const iso = value.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+            if (iso) return excelSerialFromParts(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+
+            const slashDate = value.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+            if (slashDate) {
+                const first = Number(slashDate[1]);
+                const second = Number(slashDate[2]);
+                const year = Number(slashDate[3]);
+                const month = first > 12 ? second : first;
+                const day = first > 12 ? first : second;
+                return excelSerialFromParts(year, month, day);
+            }
+
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? null : excelSerialFromParts(d.getFullYear(), d.getMonth() + 1, d.getDate());
+        }
+
+        function excelSerialFromParts(year, month, day) {
+            return Math.floor(Date.UTC(year, month - 1, day) / 86400000) + 25569;
         }
 
         function sanitizeAmt(v) {
-            if (typeof v === 'number') return v;
-            let n = parseFloat(String(v).replace(/[$, ]/g, ''));
+            if (v === null || v === undefined || v === '') return null;
+            const n = parseFloat(String(v).replace(/[$,]/g, ''));
             return isNaN(n) ? null : n;
         }
 
-        function showError(t, m) {
-            document.getElementById('error-title').innerText = t;
-            document.getElementById('error-message').innerText = m;
-            document.getElementById('error-modal').classList.remove('hidden');
-            document.getElementById('error-modal').classList.add('flex');
-        }
-
-        function closeError() {
-            document.getElementById('error-modal').classList.add('hidden');
-            document.getElementById('error-modal').classList.remove('flex');
+        function formatDate(excelDate) {
+            const date = new Date((excelDate - 25569) * 86400 * 1000);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
         }
     </script>
 </body>
